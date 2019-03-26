@@ -11,29 +11,21 @@ import UIKit
 class ToDoListViewController: UITableViewController {
 
     var itemArray = [Item]()
+    let dataFilePath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first?.appendingPathComponent("Items.plist")
     
-    let defaults = UserDefaults.standard
     
     override func viewDidLoad() {
         super.viewDidLoad()
         
-        let newItem = Item()
-        newItem.title = "Find Me"
-        itemArray.append(newItem)
-        
-        let newItem2 = Item()
-        newItem2.title = "Nada"
-        itemArray.append(newItem2)
-        
-        let newItem3 = Item()
-        newItem3.title = "Filla"
-        itemArray.append(newItem3)
+        // Creating file path to the document folder and creating own plist
         
         
-        // Retrieve the data from the deafults settings instance of user
-        if let items = defaults.array(forKey: "toDoListArray") as? [Item] {
-            itemArray = items
-        }
+        print(dataFilePath)
+
+        
+        
+        // Retrieve the data from our custom plist - calling the method
+        loadItems()
         
     }
 
@@ -70,7 +62,8 @@ class ToDoListViewController: UITableViewController {
         
         itemArray[indexPath.row].done = !itemArray[indexPath.row].done
         
-        tableView.reloadData()
+        saveItems()
+        
         
         tableView.deselectRow(at: indexPath, animated: true)
         
@@ -88,24 +81,52 @@ class ToDoListViewController: UITableViewController {
             
             let newItem = Item()
             newItem.title = textField.text!
+            
             self.itemArray.append(newItem)
             
-            // Passing key value pair to the defaults instance
-            self.defaults.set(self.itemArray, forKey: "toDoListArray")
+            self.saveItems()
             
-            self.tableView.reloadData() //refersh the table view
         }
         
         alert.addTextField { (alertTextField) in
             alertTextField.placeholder = "Create new item"
             textField = alertTextField
             
-        }
+        
         
         alert.addAction(action)
         
-        present(alert, animated: true, completion: nil)
+        self.present(alert, animated: true, completion: nil)
+    }
+
+
+}
+    //MAARK - Model Manipulation Methods
+    func saveItems() {
+        // Encoding our data into a property list and writing data to it
+        let encoder = PropertyListEncoder()
+        
+        do {
+            let data = try encoder.encode(itemArray)
+            try data.write(to: dataFilePath!)
+        }
+        catch {
+            print("Error encoding itema array, \(error)")
+        }
+        
+        self.tableView.reloadData() //refersh the table view
     }
     
+    func loadItems() {
+        if let data = try? Data(contentsOf: dataFilePath!) {
+            let decoder = PropertyListDecoder()
+            do {
+            itemArray = try decoder.decode([Item].self, from: data)
+            } catch {
+                print("Error decoding itemArray \(error)")
+            }
+    }
+
 }
 
+}
