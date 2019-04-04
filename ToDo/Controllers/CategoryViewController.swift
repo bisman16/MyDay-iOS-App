@@ -5,22 +5,30 @@
 //  Created by Praveen Singh on 29/03/19.
 //  Copyright © 2019 Bisman Singh. All rights reserved.
 //
-
+// pod 'SwipeCellKit', :git => 'https://github.com/SwipeCellKit/SwipeCellKit.git', :branch => 'swift_4.2'
 import UIKit
-import CoreData
+import RealmSwift
 
 class CategoryViewController: UITableViewController {
     
+    // used try! because Realm can throw errors at the start of app because of resource constraints
+    let realm = try! Realm()
+    
     // Creating an empty instance/object/object of Category class/table so that we can edit the array of rows
-    var categoryArray = [Category]()
+    // results object after querying from realm database
+    // results is a data type - auto update container
+    // ! - forced unwrapped (telling it that it definitely has a value, will throw error if no value - not safe to use sometimes), so use ? - optional
     
-    // Creating a context instance through ui application delegate to access the permanent database - Persistant container through its contet property, shared- singleton
-    let context = (UIApplication.shared.delegate as! AppDelegate).persistentContainer.viewContext
     
+    // collection of results that are category objects
+    var categories: Results<Category>?
+    
+
+
     override func viewDidLoad() {
         super.viewDidLoad()
         
-        loadCategories()
+      loadCategories()
        
     }
 
@@ -29,18 +37,20 @@ class CategoryViewController: UITableViewController {
     
     // Number of rows to be displayed
     override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        return categoryArray.count
+        
+        // return categories and if nill, return 1 cell
+        return categories?.count ?? 1
     }
     
-    // Content to be displayed in rows
+    // Content to be displayed in rows/cells
     override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         
         // create a reusable cell
         let cell = tableView.dequeueReusableCell(withIdentifier: "CategoryCell", for: indexPath)
         
-        let category = categoryArray[indexPath.row]
+
         
-        cell.textLabel?.text = category.name
+        cell.textLabel?.text = categories?[indexPath.row].name ?? "No categories added yet"
         
         return cell
         
@@ -51,7 +61,7 @@ class CategoryViewController: UITableViewController {
         let destinationVC = segue.destination as! ToDoListViewController
         
         if let indexPath = tableView.indexPathForSelectedRow {
-            destinationVC.selectedCategory = categoryArray[indexPath.row]
+            destinationVC.selectedCategory = categories?[indexPath.row]
         }
         
     }
@@ -66,10 +76,12 @@ class CategoryViewController: UITableViewController {
     
     //MARK: - Data Manipulation Methods
     
-    func saveCategories() {
+    func save(category: Category) {
         
         do {
-            try context.save()
+            try realm.write {
+                realm.add(category)
+            }
         }
         catch {
             print("Error saving category \(error)")
@@ -81,21 +93,16 @@ class CategoryViewController: UITableViewController {
     
     // to load all categories at the start of app
     func loadCategories() {
+
+        // pull out everything in Category object
+        categories = realm.objects(Category.self)
         
-        // read data from context - specify a request
-        let request : NSFetchRequest<Category> = Category.fetchRequest() // grab all objects created using Category class
-       
-        do {
-            categoryArray = try context.fetch(request)
-        }
-        catch {
-            print("Error loading categories \(error)")
-        }
         
+        // reloadData() calls all the data source methods
         tableView.reloadData()
-        
+
     }
-    
+//
     
     //MARK: - Add New Categories
     
@@ -110,13 +117,12 @@ class CategoryViewController: UITableViewController {
         let action = UIAlertAction(title: "Add category", style: .default) { (action) in
          
         // Creating new object/row/entry in category class/table
-        let newCategory = Category(context: self.context)
+        let newCategory = Category()
         
-            newCategory.name = textField.text!
+        newCategory.name = textField.text!
             
-        self.categoryArray.append(newCategory)
         
-        self.saveCategories()
+            self.save(category: newCategory)
             
             
         }
